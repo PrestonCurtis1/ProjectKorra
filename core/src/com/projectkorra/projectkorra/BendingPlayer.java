@@ -164,7 +164,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 		if (this.player.isDead() || this.player.getGameMode() == GameMode.SPECTATOR) {
 			return false;
-		} else if (Commands.isToggledForAll || !this.isToggled() || !this.isElementToggled(ability.getElement())) {
+		} else if (Commands.isToggledForAll || !this.isToggled() || !this.isElementToggled(ability.getElement()) || !this.isAbilityToggled(ability)) {
 			return false;
 		} else if (!this.canBind(ability)) {
 			return false;
@@ -205,7 +205,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	}
 
 	public boolean canBendPassive(final CoreAbility ability) {
-		if (ability == null || !this.isPassiveToggled(ability.getElement()) || !this.isToggledPassives()) {
+		if (ability == null || !this.isPassiveToggled(ability.getElement()) || !this.isToggledPassives() || !this.isAbilityToggled(ability)) {
 			return false; // If the passive is disabled.
 		}
 		final Element element = ability.getElement();
@@ -228,7 +228,7 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 	public boolean canUsePassive(final CoreAbility ability) {
 		final Element element = ability.getElement();
-		if ((!this.isToggled() && ConfigManager.defaultConfig.get().getBoolean("Properties.TogglePassivesWithAllBending")) || !this.isElementToggled(element) || !this.isPassiveToggled(element) || !this.isToggledPassives()) {
+		if ((!this.isToggled() && ConfigManager.defaultConfig.get().getBoolean("Properties.TogglePassivesWithAllBending")) || !this.isElementToggled(element) || !this.isPassiveToggled(element) || !this.isToggledPassives() || !this.isAbilityToggled(ability)) {
 			return false;
 		} else if (this.isChiBlocked() || this.isParalyzed() || this.isBloodbent()) {
 			return false;
