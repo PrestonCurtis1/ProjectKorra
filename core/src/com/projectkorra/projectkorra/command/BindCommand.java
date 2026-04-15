@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.projectkorra.projectkorra.ProjectKorra;
 import com.projectkorra.projectkorra.util.ChatUtil;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -86,7 +85,6 @@ public class BindCommand extends PKCommand {
 
 		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
 		final CoreAbility coreAbil = CoreAbility.getAbility(ability);
-        ProjectKorra.log.info("canBind: " + bPlayer.canBind(coreAbil));
 		if (bPlayer == null) {
 			ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.loadingInfo);
 			return;
