@@ -229,6 +229,7 @@ public class PKListener implements Listener {
 	private static final Set<Player> PLAYER_DROPPED_ITEM = new HashSet<>(); // Player dropped an item.
 	private static final Map<Player, Integer> JUMPS = new HashMap<>();
 
+
 	@EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
 	public void onBlockBreak(final BlockBreakEvent event) {
 		if (BendingPlayer.isWorldDisabled(event.getBlock().getWorld())) {

@@ -70,7 +70,6 @@ public class BendingPlayer extends OfflineBendingPlayer {
 	private long slowTime;
 	private final Player player;
 	private StanceAbility stance;
-
 	protected boolean tremorSense;
 	protected boolean illumination;
 	protected boolean chiBlocked;
@@ -165,7 +164,10 @@ public class BendingPlayer extends OfflineBendingPlayer {
 
 		if (this.player.isDead() || this.player.getGameMode() == GameMode.SPECTATOR) {
 			return false;
-		} else if (Commands.isToggledForAll || !this.isToggled() || !this.isElementToggled(ability.getElement()) || !this.isAbilityToggled(ability)) {
+		} else if (Commands.isToggledForAll || !this.isToggled() || !this.isElementToggled(ability.getElement())) {
+			return false;
+		} else if (!this.isAbilityToggled(ability)) {
+            GeneralMethods.sendAbilityToggledOffMessage(this.player, ability);
 			return false;
 		} else if (!this.canBind(ability)) {
 			return false;

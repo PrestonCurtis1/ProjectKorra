@@ -93,16 +93,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Predicate;
 
 import static com.projectkorra.projectkorra.ProjectKorra.plugin;
@@ -111,8 +102,8 @@ public class GeneralMethods {
 	public static final List<BlockFace> CARDINAL_FACES = List.of(BlockFace.NORTH, BlockFace.NORTH_EAST, BlockFace.EAST, BlockFace.SOUTH_EAST, BlockFace.SOUTH, BlockFace.SOUTH_WEST, BlockFace.WEST, BlockFace.NORTH_WEST);
 	public static final List<BlockFace> ADJACENT_FACES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN);
 	public static final List<BlockFace> ADJACENT_SIDES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST);
-
-	/**
+    private static final HashMap<String, Long> abilityToggledOffMessageCooldowns = new HashMap<>();
+    /**
 	 * Checks to see if an AbilityExists. Uses method
 	 * {@link CoreAbility#getAbility(String)} to check if it exists.
 	 *
@@ -225,7 +216,18 @@ public class GeneralMethods {
 		final boolean yz = xyzSolid[1] && xyzSolid[2];
 		return xz || xy || yz;
 	}
-
+    public static boolean sendAbilityToggledOffMessage(Player player, CoreAbility ability) {//kept sending message twice and this was the easiest solution i could think of
+        String message = ConfigManager.languageConfig.get().getString("Commands.Toggle.AbilityToggledOff");
+        if (message != null) {//add 10 second cooldown for message to prevent spam
+            abilityToggledOffMessageCooldowns.putIfAbsent(ability.getName(), 0L);
+            if (abilityToggledOffMessageCooldowns.get(ability.getName()) + 10000 > System.currentTimeMillis()) {
+                return false;
+            }
+            ChatUtil.sendBrandingMessage(player, ChatUtil.color(message.replace("{ability}", ability.getName())));
+            abilityToggledOffMessageCooldowns.put(ability.getName(), System.currentTimeMillis());
+        }
+        return true;
+    }
 	public static int compareArmor(Material first, Material second) {
 		return getArmorTier(first) - getArmorTier(second);
 	}
