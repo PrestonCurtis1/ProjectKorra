@@ -144,10 +144,25 @@ public class OfflineBendingPlayer {
         //If we already have the players data cached from an OfflineBendingPlayer instance
         if (PLAYERS.get(uuid) != null) {
             OfflineBendingPlayer oBendingPlayer = PLAYERS.get(uuid); //Get cached instance
-            if (offlinePlayer.isOnline() && !(oBendingPlayer instanceof BendingPlayer)) {
-                BendingPlayer bendingPlayer = convertToOnline(oBendingPlayer);
-                oBendingPlayer = bendingPlayer;
-                bendingPlayer.postLoad();
+            if (offlinePlayer.isOnline()) {
+                if (!(oBendingPlayer instanceof BendingPlayer)) {
+                    BendingPlayer bendingPlayer = convertToOnline(oBendingPlayer);
+                    if (bendingPlayer != null) {
+                        oBendingPlayer = bendingPlayer;
+                        bendingPlayer.postLoad();
+                    }
+                } else {
+                    // Player rejoined but cache still points to an old Player session; rebuild the online wrapper.
+                    Player currentPlayer = offlinePlayer.getPlayer();
+                    BendingPlayer cachedOnline = (BendingPlayer) oBendingPlayer;
+                    if (currentPlayer != null && cachedOnline.getPlayer() != currentPlayer) {
+                        BendingPlayer refreshed = new BendingPlayer(cachedOnline);
+                        PLAYERS.put(uuid, refreshed);
+                        ONLINE_PLAYERS.put(uuid, refreshed);
+                        oBendingPlayer = refreshed;
+                        refreshed.postLoad();
+                    }
+                }
             }
             if (!(oBendingPlayer instanceof BendingPlayer)) {
                 oBendingPlayer.lastAccessed = System.currentTimeMillis();
@@ -1303,9 +1318,9 @@ public class OfflineBendingPlayer {
     }
 
     protected static BendingPlayer convertToOnline(@NotNull OfflineBendingPlayer offlineBendingPlayer) {
-        Player player = offlineBendingPlayer.player.getPlayer();
+        Player player = Bukkit.getPlayer(offlineBendingPlayer.getUUID());
         if (player == null) {
-            return null;
+            player = offlineBendingPlayer.player.getPlayer();
         }
 
         BendingPlayer bendingPlayer = new BendingPlayer(offlineBendingPlayer);
