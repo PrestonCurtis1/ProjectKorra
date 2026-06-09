@@ -96,8 +96,36 @@ public class GeneralMethods {
 	public static final List<BlockFace> CARDINAL_FACES = List.of(BlockFace.NORTH, BlockFace.NORTH_EAST, BlockFace.EAST, BlockFace.SOUTH_EAST, BlockFace.SOUTH, BlockFace.SOUTH_WEST, BlockFace.WEST, BlockFace.NORTH_WEST);
 	public static final List<BlockFace> ADJACENT_FACES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN);
 	public static final List<BlockFace> ADJACENT_SIDES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST);
-    private static final HashMap<String, Long> abilityToggledOffMessageCooldowns = new HashMap<>();
-    /**
+	private static final Map<UUID, Map<String, Long>> abilityToggledOffMessageCooldowns = new HashMap<>();
+
+	private static long getAbilityToggledOffMessageCooldown(final Player player, final String abilityName) {
+		final Map<String, Long> playerCooldowns = abilityToggledOffMessageCooldowns.get(player.getUniqueId());
+		if (playerCooldowns == null) {
+			return 0L;
+		}
+
+		return playerCooldowns.getOrDefault(abilityName, 0L);
+	}
+
+	private static void setAbilityToggledOffMessageCooldown(final Player player, final String abilityName, final long cooldown) {
+		abilityToggledOffMessageCooldowns
+			.computeIfAbsent(player.getUniqueId(), uuid -> new HashMap<>())
+			.put(abilityName, cooldown);
+	}
+
+	private static void clearAbilityToggledOffMessageCooldown(final Player player, final String abilityName) {
+		final Map<String, Long> playerCooldowns = abilityToggledOffMessageCooldowns.get(player.getUniqueId());
+		if (playerCooldowns == null) {
+			return;
+		}
+
+		playerCooldowns.remove(abilityName);
+		if (playerCooldowns.isEmpty()) {
+			abilityToggledOffMessageCooldowns.remove(player.getUniqueId());
+		}
+	}
+
+	/**
 	 * Checks to see if an AbilityExists. Uses method
 	 * {@link CoreAbility#getAbility(String)} to check if it exists.
 	 *
