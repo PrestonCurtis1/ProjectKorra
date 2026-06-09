@@ -63,7 +63,6 @@ import org.bukkit.block.data.Levelled;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityCategory;
 import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -96,7 +95,8 @@ public class GeneralMethods {
 	public static final List<BlockFace> CARDINAL_FACES = List.of(BlockFace.NORTH, BlockFace.NORTH_EAST, BlockFace.EAST, BlockFace.SOUTH_EAST, BlockFace.SOUTH, BlockFace.SOUTH_WEST, BlockFace.WEST, BlockFace.NORTH_WEST);
 	public static final List<BlockFace> ADJACENT_FACES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN);
 	public static final List<BlockFace> ADJACENT_SIDES = List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST);
-	private static final Map<UUID, Map<String, Long>> abilityToggledOffMessageCooldowns = new HashMap<>();
+	private static final Map<Object, Map<String, Long>> abilityToggledOffMessageCooldowns = new HashMap<Object, Map<String, Long>>();
+    private static final long TOGGLE_MESSAGE_COOLDOWN_MS = 10000L;
 
 	private static long getAbilityToggledOffMessageCooldown(final Player player, final String abilityName) {
 		final Map<String, Long> playerCooldowns = abilityToggledOffMessageCooldowns.get(player.getUniqueId());
@@ -238,18 +238,41 @@ public class GeneralMethods {
 		final boolean yz = xyzSolid[1] && xyzSolid[2];
 		return xz || xy || yz;
 	}
-    public static boolean sendAbilityToggledOffMessage(Player player, CoreAbility ability) {//kept sending message twice and this was the easiest solution i could think of
+
+    /**
+     * Sends a message to the player confirming an ability has been toggled off.
+     * Utilizes a nested map tracker to ensure cooldowns are isolated per-player.
+     *
+     * @param player  The player receiving the message.
+     * @param ability The ability that was toggled off.
+     * @return true if the message was successfully sent; false if suppressed by the cooldown.
+     */
+    public static boolean sendAbilityToggledOffMessage(Player player, CoreAbility ability) {
         String message = ConfigManager.languageConfig.get().getString("Commands.Toggle.AbilityToggledOff");
-        if (message != null) {//add 10 second cooldown for message to prevent spam
-            abilityToggledOffMessageCooldowns.putIfAbsent(ability.getName(), 0L);
-            if (abilityToggledOffMessageCooldowns.get(ability.getName()) + 10000 > System.currentTimeMillis()) {
-                return false;
-            }
-            ChatUtil.sendBrandingMessage(player, ChatUtil.color(message.replace("{ability}", ability.getName())));
-            abilityToggledOffMessageCooldowns.put(ability.getName(), System.currentTimeMillis());
+        if (message == null) {
+            return false;
         }
+
+        UUID playerUUID = player.getUniqueId();
+        String abilityName = ability.getName();
+        long currentTime = System.currentTimeMillis();
+
+        // Get or create the inner map for this specific player
+        Map<String, Long> playerCooldowns = abilityToggledOffMessageCooldowns.computeIfAbsent(playerUUID, k -> new HashMap<>());
+
+        // Check the player's personal cooldown for this specific ability
+        long lastSent = playerCooldowns.getOrDefault(abilityName, 0L);
+        if (lastSent + TOGGLE_MESSAGE_COOLDOWN_MS > currentTime) {
+            return false;
+        }
+
+        // Send message and update their specific map
+        ChatUtil.sendBrandingMessage(player, ChatUtil.color(message.replace("{ability}", abilityName)));
+        playerCooldowns.put(abilityName, currentTime);
+
         return true;
     }
+
 	public static int compareArmor(Material first, Material second) {
 		return getArmorTier(first) - getArmorTier(second);
 	}

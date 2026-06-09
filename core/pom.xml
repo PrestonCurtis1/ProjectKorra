@@ -112,16 +112,6 @@
     </repositories>
 
     <dependencies>
-        <dependency>
-            <groupId>com.projectkorra</groupId>
-            <artifactId>core-modern</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.projectkorra</groupId>
-            <artifactId>core-legacy</artifactId>
-            <version>${project.version}</version>
-        </dependency>
         <!-- PaperLib -->
         <dependency>
             <groupId>io.papermc</groupId>

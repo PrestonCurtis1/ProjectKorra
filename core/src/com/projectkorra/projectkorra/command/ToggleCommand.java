@@ -221,36 +221,52 @@ public class ToggleCommand extends PKCommand {
 	}
 
 	@Override
-	protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
-		if (args.size() >= 2 || !sender.hasPermission("bending.command.toggle.others")) {
-			return new ArrayList<>();
-		}
-		final List<String> l = new ArrayList<>();
-		if (args.isEmpty()) {
-			final List<String> elements = new ArrayList<>();
-			final List<String> abilities = new ArrayList<>();
-			for (final Element e : Element.getAllElements()) {
-				elements.add(e.getName());
-			}
-			CoreAbility.getAbilitiesByName().stream()
-					.filter(ab -> ab.isEnabled() && !ab.isHiddenAbility() && !(ab instanceof ComboAbility))
-					.map(CoreAbility::getName)
-					.distinct()
-					.forEach(abilities::add);
-			cachedPassiveElements.forEach(e -> elements.add(e.getName() + "Passives"));
-			Collections.sort(elements);
-			Collections.sort(abilities);
-			l.add("All");
-				l.add("On");
-				l.add("Off");
-			l.add("Passives");
-			l.addAll(elements);
-			l.addAll(abilities);
-		} else {
-			for (final Player p : Bukkit.getOnlinePlayers()) {
-				l.add(p.getName());
-			}
-		}
-		return l;
-	}
+    protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
+        // If they are trying to type a 3rd argument or beyond, return empty.
+        if (args.size() >= 3) {
+            return new ArrayList<>();
+        }
+
+        final List<String> l = new ArrayList<>();
+
+        // First argument completions: Elements, abilities, options
+        if (args.size() <= 1) {
+            final List<String> elements = new ArrayList<>();
+            final List<String> abilities = new ArrayList<>();
+
+            for (final Element e : Element.getAllElements()) {
+                elements.add(e.getName());
+            }
+
+            CoreAbility.getAbilitiesByName().stream()
+                    .filter(ab -> ab.isEnabled() && !ab.isHiddenAbility() && !(ab instanceof ComboAbility))
+                    .map(CoreAbility::getName)
+                    .distinct()
+                    .forEach(abilities::add);
+
+            cachedPassiveElements.forEach(e -> elements.add(e.getName() + "Passives"));
+
+            Collections.sort(elements);
+            Collections.sort(abilities);
+
+            l.add("All");
+            l.add("On");
+            l.add("Off");
+            l.add("Passives");
+            l.addAll(elements);
+            l.addAll(abilities);
+
+        } else if (args.size() == 2) {
+            // Second argument completions: Only show online players if they have permission to toggle others
+            if (!sender.hasPermission("bending.command.toggle.others")) {
+                return new ArrayList<>();
+            }
+
+            for (final Player p : Bukkit.getOnlinePlayers()) {
+                l.add(p.getName());
+            }
+        }
+
+        return l;
+    }
 }
