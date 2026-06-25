@@ -68,16 +68,15 @@ public class ToggleCommand extends PKCommand {
 	public void execute(final CommandSender sender, final List<String> args) {
 		if (!this.correctLength(sender, args.size(), 0, 2)) {
 			return;
-		} else if (args.size() == 0) { // bending toggle,
-			if (!this.hasPermission(sender) || !this.isPlayer(sender)) {
-				return;
-			}
-			if (Commands.isToggledForAll) {
-				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.toggledOffForAll);
+		}
+
+		// 1. /bending toggle (Self - only for players)
+		if (args.size() == 0) {
+			if (!this.isPlayer(sender)) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + "You must be a player to use this command without arguments.");
 				return;
 			}
 			BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
-
 			if (bPlayer.isToggled()) {
 				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.toggleOffSelf);
 				bPlayer.toggleBending();
@@ -85,129 +84,69 @@ public class ToggleCommand extends PKCommand {
 				ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + this.toggleOnSelf);
 				bPlayer.toggleBending();
 			}
-		} else if (args.size() == 1) {
-			String toggleableParam = args.get(0).toLowerCase();
-			if ((toggleableParam.equals("all") || toggleableParam.equals("on") || toggleableParam.equals("off")) && this.hasPermission(sender, "all")) { // bending toggle all.
-				final boolean newState = toggleableParam.equals("all") ? !Commands.isToggledForAll : toggleableParam.equals("on");
-				if (Commands.isToggledForAll != newState) {
-					Commands.isToggledForAll = newState;
-					final ChatColor messageColor = newState ? ChatColor.GREEN : ChatColor.RED;
-					final String message = newState ? this.toggleOnAll : this.toggleOffAll;
-					for (final Player player : Bukkit.getOnlinePlayers()) {
-						ChatUtil.sendBrandingMessage(player, messageColor + message);
-					}
-					if (!(sender instanceof Player)) {
-						ChatUtil.sendBrandingMessage(sender, messageColor + message);
-					}
-				}
-			} else if (sender instanceof Player) {
-				final CoreAbility coreAbil = CoreAbility.getAbility(args.get(0));
-				if (coreAbil != null && coreAbil.isEnabled() && !(coreAbil instanceof ComboAbility) && !coreAbil.isHiddenAbility()) {
-					final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
-					final ChatColor color = coreAbil.getElement() != null ? coreAbil.getElement().getColor() : ChatColor.WHITE;
-					bPlayer.toggleAbility(coreAbil);
+			return;
+		}
 
-					if (bPlayer.isAbilityToggled(coreAbil)) {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOnSingleElement.replace("{element}", coreAbil.getName()));
-					} else {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOffSingleElement.replace("{element}", coreAbil.getName()));
-					}
-				} else if (Element.fromString(toggleableParam) != null && !(Element.fromString(toggleableParam) instanceof SubElement)) {
-					final Element e = Element.fromString(toggleableParam);
-					if (!BendingPlayer.getBendingPlayer((Player) sender).hasElement(e)) {
-						ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElement);
-						return;
-					}
+		// 2. Argument Parsing
+		String arg0 = args.get(0).toLowerCase();
+		Player target = (args.size() == 2) ? Bukkit.getPlayer(args.get(1)) : (sender instanceof Player ? (Player) sender : null);
 
-					final ChatColor color = e.getColor();
-					final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
-					bPlayer.toggleElement(e);
+		// Handle "All" toggle (Permissions required)
+		if ((arg0.equals("all") || arg0.equals("on") || arg0.equals("off")) && this.hasPermission(sender, "all")) {
+			final boolean newState = arg0.equals("all") ? !Commands.isToggledForAll : arg0.equals("on");
+			Commands.isToggledForAll = newState;
+			final ChatColor color = newState ? ChatColor.GREEN : ChatColor.RED;
+			final String msg = newState ? this.toggleOnAll : this.toggleOffAll;
+			for (Player p : Bukkit.getOnlinePlayers()) ChatUtil.sendBrandingMessage(p, color + msg);
+			if (!(sender instanceof Player)) ChatUtil.sendBrandingMessage(sender, color + msg);
+			return;
+		}
 
-					if (bPlayer.isElementToggled(e)) {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOnSingleElement.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-					} else {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOffSingleElement.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-					}
-				}  else if (!toggleableParam.equals("passives") && Element.fromString(toggleableParam.split("passives")[0]) != null) {
-					final Element e = Element.fromString(toggleableParam.split("passives")[0]);
-					if (!BendingPlayer.getBendingPlayer((Player) sender).hasElement(e)) {
-						ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElement);
-						return;
-					}
-					final ChatColor color = e.getColor();
-					final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
-					bPlayer.togglePassive(e);
+		// Handle Target Validation
+		if (args.size() == 2 && target == null) {
+			ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.notFound);
+			return;
+		}
+		if (target == null) {
+			this.help(sender, false);
+			return;
+		}
 
-					if (bPlayer.isPassiveToggled(e)) {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOnSingleElementPassive.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-					} else {
-						ChatUtil.sendBrandingMessage(sender, color + this.toggledOffSingleElementPassive.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-					}
-				} else if (toggleableParam.equals("passives")) {
-					BendingPlayer bPlayer = BendingPlayer.getBendingPlayer((Player) sender);
+		// Admin Permission Check for others
+		if (!target.equals(sender) && !this.hasAdminPermission(sender)) {
+			return;
+		}
 
-					if (bPlayer.isToggledPassives()) {
-						ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.toggleAllPassivesOffSelf);
-					} else {
-						ChatUtil.sendBrandingMessage(sender, ChatColor.GREEN + this.toggleAllPassivesOnSelf);
-					}
-					bPlayer.toggleAllPassives();
-				} else {
-					this.help(sender, false);
-				}
-			}
+		// 3. Process Abilities, Elements, and Passives
+		final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(target);
+		final CoreAbility coreAbil = CoreAbility.getAbility(arg0);
+		final Element element = Element.fromString(arg0);
 
-		} else if (sender instanceof Player && args.size() == 2 && CoreAbility.getAbility(args.get(0)) != null) {
-			final CoreAbility coreAbil = CoreAbility.getAbility(args.get(0));
-			if (coreAbil == null || !coreAbil.isEnabled() || coreAbil instanceof ComboAbility || coreAbil.isHiddenAbility()) {
-				this.help(sender, false);
-				return;
-			}
-			final Player target = Bukkit.getPlayer(args.get(1));
-			if (!this.hasAdminPermission(sender)) {
-				return;
-			}
-			if (target == null) {
-				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.notFound);
-				return;
-			}
-			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(target);
-			final ChatColor color = coreAbil.getElement() != null ? coreAbil.getElement().getColor() : ChatColor.WHITE;
-
-			if (bPlayer.isAbilityToggled(coreAbil)) {
-				ChatUtil.sendBrandingMessage(sender, color + this.toggledOffOtherElementConfirm.replace("{target}", target.getName()).replace("{element}", coreAbil.getName()));
-				ChatUtil.sendBrandingMessage(target, color + this.toggledOffOtherElement.replace("{element}", coreAbil.getName()).replace("{sender}", ChatColor.DARK_AQUA + sender.getName()));
-			} else {
-				ChatUtil.sendBrandingMessage(sender, color + this.toggledOnOtherElementConfirm.replace("{target}", target.getName()).replace("{element}", coreAbil.getName()));
-				ChatUtil.sendBrandingMessage(target, color + this.toggledOnOtherElement.replace("{element}", coreAbil.getName()).replace("{sender}", ChatColor.DARK_AQUA + sender.getName()));
-			}
+		// Ability Toggle
+		if (coreAbil != null && coreAbil.isEnabled() && !(coreAbil instanceof ComboAbility) && !coreAbil.isHiddenAbility()) {
 			bPlayer.toggleAbility(coreAbil);
-		} else if (sender instanceof Player && args.size() == 2 && Element.fromString(args.get(0)) != null && !(Element.fromString(args.get(0)) instanceof SubElement)) {
-			Element e = Element.fromString(args.get(0));
-			final Player target = Bukkit.getPlayer(args.get(1));
-			if (!this.hasAdminPermission(sender)) {
+			ChatColor color = coreAbil.getElement() != null ? coreAbil.getElement().getColor() : ChatColor.WHITE;
+			String msg = bPlayer.isAbilityToggled(coreAbil) ? this.toggledOnSingleElement : this.toggledOffSingleElement;
+			ChatUtil.sendBrandingMessage(sender, color + msg.replace("{element}", coreAbil.getName()));
+		}
+		// Element Toggle
+		else if (element != null && !(element instanceof SubElement)) {
+			if (!bPlayer.hasElement(element)) {
+				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElement);
 				return;
 			}
-			if (target == null) {
-				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.notFound);
-				return;
-			}
-			if (!BendingPlayer.getBendingPlayer(target).hasElement(e)) {
-				ChatUtil.sendBrandingMessage(sender, ChatColor.RED + this.wrongElementOther.replace("{target}", ChatColor.DARK_AQUA + target.getName() + ChatColor.RED));
-				return;
-			}
-			final BendingPlayer bPlayer = BendingPlayer.getBendingPlayer(target);
-			final ChatColor color = e.getColor();
-
-			if (bPlayer.isElementToggled(e)) {
-				ChatUtil.sendBrandingMessage(sender, color + this.toggledOffOtherElementConfirm.replace("{target}", target.getName()).replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-				ChatUtil.sendBrandingMessage(target, color + this.toggledOffOtherElement.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")).replace("{sender}", ChatColor.DARK_AQUA + sender.getName()));
-			} else {
-				ChatUtil.sendBrandingMessage(sender, color + this.toggledOnOtherElementConfirm.replace("{target}", target.getName()).replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")));
-				ChatUtil.sendBrandingMessage(target, color + this.toggledOnOtherElement.replace("{element}", e.getName() + (e.getType() != null ? e.getType().getBending() : "")).replace("{sender}", ChatColor.DARK_AQUA + sender.getName()));
-			}
-			bPlayer.toggleElement(e);
-		} else {
+			bPlayer.toggleElement(element);
+			ChatColor color = element.getColor();
+			String msg = bPlayer.isElementToggled(element) ? this.toggledOnSingleElement : this.toggledOffSingleElement;
+			ChatUtil.sendBrandingMessage(sender, color + msg.replace("{element}", element.getName() + (element.getType() != null ? element.getType().getBending() : "")));
+		}
+		// Passive Toggle
+		else if (arg0.equals("passives")) {
+			bPlayer.toggleAllPassives();
+			ChatUtil.sendBrandingMessage(sender, bPlayer.isToggledPassives() ? ChatColor.GREEN + this.toggleAllPassivesOnSelf : ChatColor.RED + this.toggleAllPassivesOffSelf);
+		}
+		// Help fallback
+		else {
 			this.help(sender, false);
 		}
 	}
@@ -221,52 +160,54 @@ public class ToggleCommand extends PKCommand {
 	}
 
 	@Override
-    protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
-        // If they are trying to type a 3rd argument or beyond, return empty.
-        if (args.size() >= 3) {
-            return new ArrayList<>();
-        }
+	protected List<String> getTabCompletion(final CommandSender sender, final List<String> args) {
+		// 1. Basic permission and size check
+		if (args.size() > 2 || !sender.hasPermission("bending.command.toggle")) {
+			return new ArrayList<>();
+		}
 
-        final List<String> l = new ArrayList<>();
+		final List<String> l = new ArrayList<>();
 
-        // First argument completions: Elements, abilities, options
-        if (args.size() <= 1) {
-            final List<String> elements = new ArrayList<>();
-            final List<String> abilities = new ArrayList<>();
+		// 2. Logic for the FIRST argument
+		if (args.size() == 0) {
+			final List<String> elements = new ArrayList<>();
+			final List<String> abilities = new ArrayList<>();
 
-            for (final Element e : Element.getAllElements()) {
-                elements.add(e.getName());
-            }
+			for (final Element e : Element.getAllElements()) {
+				elements.add(e.getName());
+			}
 
-            CoreAbility.getAbilitiesByName().stream()
-                    .filter(ab -> ab.isEnabled() && !ab.isHiddenAbility() && !(ab instanceof ComboAbility))
-                    .map(CoreAbility::getName)
-                    .distinct()
-                    .forEach(abilities::add);
+			CoreAbility.getAbilitiesByName().stream()
+					.filter(ab -> ab.isEnabled() && !ab.isHiddenAbility() && !(ab instanceof ComboAbility))
+					.map(CoreAbility::getName)
+					.distinct()
+					.forEach(abilities::add);
 
-            cachedPassiveElements.forEach(e -> elements.add(e.getName() + "Passives"));
+			if (this.cachedPassiveElements != null) {
+				this.cachedPassiveElements.forEach(e -> elements.add(e.getName() + "Passives"));
+			}
 
-            Collections.sort(elements);
-            Collections.sort(abilities);
+			Collections.sort(elements);
+			Collections.sort(abilities);
 
-            l.add("All");
-            l.add("On");
-            l.add("Off");
-            l.add("Passives");
-            l.addAll(elements);
-            l.addAll(abilities);
-
-        } else if (args.size() == 2) {
-            // Second argument completions: Only show online players if they have permission to toggle others
-            if (!sender.hasPermission("bending.command.toggle.others")) {
-                return new ArrayList<>();
-            }
-
-            for (final Player p : Bukkit.getOnlinePlayers()) {
-                l.add(p.getName());
-            }
-        }
-
-        return l;
-    }
+			l.add("All");
+			l.add("On");
+			l.add("Off");
+			l.add("Passives");
+			l.addAll(elements);
+			l.addAll(abilities);
+		}
+		// 3. Logic for the SECOND argument: ONLY add players
+		else if (args.size() == 1) {
+			if (!this.hasAdminPermission(sender)) {
+				return new ArrayList<>();
+			}
+			// Ensure the list is empty before adding players
+			l.clear();
+			for (final Player p : Bukkit.getOnlinePlayers()) {
+				l.add(p.getName());
+			}
+		}
+		return l;
+	}
 }
